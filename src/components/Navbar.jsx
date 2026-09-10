@@ -1,4 +1,4 @@
-
+import React from 'react';
 
 export default function Navbar({ user, theme, onToggleTheme }) {
   const username = user?.identifier ? user.identifier.split('@')[0] : 'Trader';
