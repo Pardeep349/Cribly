@@ -1,4 +1,4 @@
-import { useCurrency } from '../CurrencyContext';
+import { useCurrency } from './CurrencyContext';
 
 export default function Navbar({ user, theme, onToggleTheme, cashBalance = 0 }) {
   const username = user?.identifier ? user.identifier.split('@')[0] : 'Trader';
