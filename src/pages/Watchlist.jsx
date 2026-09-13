@@ -1,6 +1,34 @@
-import React from 'react';
+import { useCurrency } from '../components/CurrencyContext';
+import { useState } from 'react';
+import StockModal from '../components/StockModal';
+import TradeModal from '../components/TradeModal';
 
-export default function Watchlist({ stocks = [], watchlist = [], onToggleWatchlist = () => {} }) {
+export default function Watchlist({
+  stocks = [],
+  watchlist = [],
+  onToggleWatchlist = () => {},
+  onExecuteTrade,
+  cashBalance = 0,
+  portfolio = []
+}) {
+  const { formatPrice } = useCurrency();
+  const [selectedStock, setSelectedStock] = useState(null);
+  const [tradeModalData, setTradeModalData] = useState(null);
+
+  const handleOpenTradeFromModal = (stock, type, shares = 1) => {
+    setSelectedStock(null);
+    setTradeModalData({ stock, type, shares });
+  };
+
+  const handleConfirmTrade = (tradePayload) => {
+    if (onExecuteTrade) {
+      const success = onExecuteTrade(tradePayload);
+      if (success !== false) {
+        setTradeModalData(null);
+      }
+    }
+  };
+
   const watchlistStocks = stocks.filter((s) => watchlist.includes(s.symbol));
 
   return (
@@ -33,8 +61,12 @@ export default function Watchlist({ stocks = [], watchlist = [], onToggleWatchli
               {watchlistStocks.map((stock) => {
                 const isPositive = stock.change >= 0;
                 return (
-                  <tr key={stock.symbol} className="market-row">
-                    <td>
+                  <tr
+                    key={stock.symbol}
+                    className="market-row"
+                    onClick={() => setSelectedStock(stock)}
+                  >
+                    <td onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => onToggleWatchlist(stock.symbol)}
                         style={{ fontSize: '1.1rem', cursor: 'pointer' }}
@@ -46,7 +78,7 @@ export default function Watchlist({ stocks = [], watchlist = [], onToggleWatchli
                     <td><strong style={{ color: 'var(--accent-blue)' }}>{stock.symbol}</strong></td>
                     <td>{stock.name}</td>
                     <td><span className="sector-badge">{stock.sector}</span></td>
-                    <td><strong>${stock.price.toFixed(2)}</strong></td>
+                    <td><strong>{formatPrice(stock.price)}</strong></td>
                     <td style={{ textAlign: 'right' }}>
                       <span className={isPositive ? 'text-green' : 'text-red'} style={{ fontWeight: '600' }}>
                         {isPositive ? '↗ +' : '↘ '}{stock.change}%
@@ -58,6 +90,26 @@ export default function Watchlist({ stocks = [], watchlist = [], onToggleWatchli
             </tbody>
           </table>
         </div>
+      )}
+
+      {selectedStock && (
+        <StockModal
+          stock={selectedStock}
+          onClose={() => setSelectedStock(null)}
+          onOpenTrade={handleOpenTradeFromModal}
+        />
+      )}
+
+      {tradeModalData && (
+        <TradeModal
+          stock={tradeModalData.stock}
+          tradeType={tradeModalData.type}
+          initialShares={tradeModalData.shares}
+          cashBalance={cashBalance}
+          portfolio={portfolio}
+          onClose={() => setTradeModalData(null)}
+          onConfirmTrade={handleConfirmTrade}
+        />
       )}
     </div>
   );
