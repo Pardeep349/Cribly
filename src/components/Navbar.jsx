@@ -1,7 +1,8 @@
-import React from 'react';
+import { useCurrency } from '../CurrencyContext';
 
-export default function Navbar({ user, theme, onToggleTheme }) {
+export default function Navbar({ user, theme, onToggleTheme, cashBalance = 0 }) {
   const username = user?.identifier ? user.identifier.split('@')[0] : 'Trader';
+  const { formatMoney } = useCurrency();
 
   return (
     <header className="header">
@@ -11,7 +12,7 @@ export default function Navbar({ user, theme, onToggleTheme }) {
         </button>
         <button title="Notifications">🔔</button>
         <div className="funds-badge">
-          💰 $12,450.00
+          💰 {formatMoney(cashBalance)}
         </div>
         <div className="user-badge">
           👤 {username}
