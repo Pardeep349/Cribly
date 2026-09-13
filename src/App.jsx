@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import './App.css';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import TickerBar from './components/TickerBar';
@@ -7,24 +8,16 @@ import Dashboard from './pages/Dashboard';
 import Portfolio from './pages/Portfolio';
 import Watchlist from './pages/Watchlist';
 import History from './pages/History';
-
-const INITIAL_STOCKS = [
-  { symbol: 'AAPL', name: 'Apple Inc.', sector: 'TECHNOLOGY', price: 189.65, buyPrice: 182.00, change: 1.39, marketCap: '$2.94T' },
-  { symbol: 'MSFT', name: 'Microsoft Corp.', sector: 'TECHNOLOGY', price: 395.36, buyPrice: 410.00, change: -3.56, marketCap: '$3.08T' },
-  { symbol: 'GOOGL', name: 'Alphabet Inc.', sector: 'TECHNOLOGY', price: 157.75, buyPrice: 150.00, change: 2.87, marketCap: '$1.92T' },
-  { symbol: 'AMZN', name: 'Amazon.com Inc.', sector: 'CONSUMER', price: 183.80, buyPrice: 180.00, change: 0.56, marketCap: '$1.91T' },
-  { symbol: 'NVDA', name: 'NVIDIA Corp.', sector: 'TECHNOLOGY', price: 895.89, buyPrice: 850.00, change: 4.09, marketCap: '$2.18T' },
-  { symbol: 'TSLA', name: 'Tesla Inc.', sector: 'CONSUMER', price: 174.80, buyPrice: 190.00, change: -2.40, marketCap: '$550B' },
-];
+import Login from './pages/Login';
+import { INITIAL_STOCKS } from './data/initialStocks';
+import Settings from './pages/Settings';
+import { CurrencyProvider } from './components/CurrencyContext';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('Market');
-  const [stocks] = useState(INITIAL_STOCKS);
+  const [activeTab, setActiveTab] = useState('Dashboard');
   const [watchlist, setWatchlist] = useState(['AAPL', 'NVDA']);
   const [theme, setTheme] = useState('dark');
-  const [user] = useState({ identifier: 'trader@cribly.com' });
-
-  // Live Financial State
+  const [user, setUser] = useState(null);
   const [cashBalance, setCashBalance] = useState(12450.00);
   const [portfolio, setPortfolio] = useState([
     { symbol: 'AAPL', shares: 10, avgPrice: 175.00 },
@@ -35,12 +28,25 @@ export default function App() {
 
   const handleToggleWatchlist = (symbol) => {
     setWatchlist((prev) =>
-      prev.includes(symbol) ? prev.filter((s) => s !== symbol) : [...prev, symbol]
+      prev.includes(symbol)
+        ? prev.filter((item) => item !== symbol)
+        : [...prev, symbol]
     );
   };
 
   const handleToggleTheme = () => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
+  const handleLogin = (loggedInUser) => {
+    setUser(loggedInUser);
+    setActiveTab('Dashboard');
+  };
+
+  // Logout and return to Login page
+  const handleLogout = () => {
+    setUser(null);
+    setActiveTab('Dashboard');
   };
 
   const handleExecuteTrade = ({ symbol, type, qty, price }) => {
@@ -58,97 +64,136 @@ export default function App() {
       return false;
     }
 
-    // 1. Update Cash Balance
-    setCashBalance((prev) => (type === 'BUY' ? prev - totalCost : prev + totalCost));
+    setCashBalance((prev) =>
+      type === 'BUY' ? prev - totalCost : prev + totalCost
+    );
 
-    // 2. Update Portfolio Holdings
     setPortfolio((prev) => {
       if (type === 'BUY') {
         if (existingHolding) {
           const newShares = existingHolding.shares + qty;
-          const newAvgPrice = ((existingHolding.shares * existingHolding.avgPrice) + totalCost) / newShares;
+          const newAvgPrice =
+            ((existingHolding.shares * existingHolding.avgPrice) + totalCost) /
+            newShares;
+
           return prev.map((item) =>
-            item.symbol === symbol ? { ...item, shares: newShares, avgPrice: newAvgPrice } : item
+            item.symbol === symbol
+              ? { ...item, shares: newShares, avgPrice: newAvgPrice }
+              : item
           );
         }
+
         return [...prev, { symbol, shares: qty, avgPrice: price }];
-      } else {
-        const remainingShares = existingHolding.shares - qty;
-        if (remainingShares === 0) {
-          return prev.filter((item) => item.symbol !== symbol);
-        }
-        return prev.map((item) =>
-          item.symbol === symbol ? { ...item, shares: remainingShares } : item
-        );
       }
+
+      const remainingShares = existingHolding.shares - qty;
+
+      if (remainingShares === 0) {
+        return prev.filter((item) => item.symbol !== symbol);
+      }
+
+      return prev.map((item) =>
+        item.symbol === symbol
+          ? { ...item, shares: remainingShares }
+          : item
+      );
     });
 
-    // 3. Append New Transaction to History
     const now = new Date();
-    const formattedTimestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-    const newTx = {
-      id: `TX${Math.floor(1000 + Math.random() * 9000)}`,
-      symbol,
-      type,
-      qty,
-      price,
-      time: formattedTimestamp,
-      status: 'Completed'
-    };
+    const formattedTimestamp =
+      `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ` +
+      `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-    setTransactions((prev) => [newTx, ...prev]);
+    setTransactions((prev) => [
+      {
+        id: `TX${Math.floor(1000 + Math.random() * 9000)}`,
+        symbol,
+        type,
+        qty,
+        price,
+        time: formattedTimestamp,
+        status: 'Completed',
+      },
+      ...prev,
+    ]);
 
     return true;
   };
 
+  // If user is logged out, show Login page
+  if (!user) {
+    return <Login onLogin={handleLogin} />;
+  }
+
   return (
-    <div className="app-container">
-      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+    <CurrencyProvider>
+      <div className={`app-container ${theme}`}>
+        <Sidebar
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          onLogout={handleLogout}
+        />
 
-      <div className="main-content">
-        <Navbar user={user} theme={theme} onToggleTheme={handleToggleTheme} cashBalance={cashBalance} />
-        <TickerBar stocks={stocks} />
+        <div className="main-content">
+          <Navbar
+            user={user}
+            theme={theme}
+            onToggleTheme={handleToggleTheme}
+            cashBalance={cashBalance}
+          />
 
-        <main className="page-container">
-          {activeTab === 'Dashboard' && (
-            <Dashboard user={user} portfolio={portfolio} stocks={stocks} cashBalance={cashBalance} />
-          )}
-          {activeTab === 'Market' && (
-            <Market
-              stocks={stocks}
-              watchlist={watchlist}
-              onToggleWatchlist={handleToggleWatchlist}
-              onExecuteTrade={handleExecuteTrade}
-              portfolio={portfolio}
-              cashBalance={cashBalance}
-            />
-          )}
-          {activeTab === 'Portfolio' && (
-            <Portfolio
-              stocks={stocks}
-              holdings={portfolio}
-              cashBalance={cashBalance}
-              onExecuteTrade={handleExecuteTrade}
-            />
-          )}
-          {activeTab === 'Watchlist' && (
-            <Watchlist
-              stocks={stocks}
-              watchlist={watchlist}
-              onToggleWatchlist={handleToggleWatchlist}
-            />
-          )}
-          {activeTab === 'History' && <History transactions={transactions} />}
+          <TickerBar stocks={INITIAL_STOCKS} />
 
-          {activeTab === 'Settings' && (
-            <div style={{ padding: '2rem', textAlign: 'center', opacity: 0.6 }}>
-              <h3>Settings View</h3>
-              <p style={{ marginTop: '0.5rem' }}>This section is currently under development.</p>
-            </div>
-          )}
-        </main>
+          <main className="page-container">
+            {activeTab === 'Dashboard' && (
+              <Dashboard
+                user={user}
+                portfolio={portfolio}
+                stocks={INITIAL_STOCKS}
+                cashBalance={cashBalance}
+              />
+            )}
+
+            {activeTab === 'Market' && (
+              <Market
+                stocks={INITIAL_STOCKS}
+                watchlist={watchlist}
+                onToggleWatchlist={handleToggleWatchlist}
+                onExecuteTrade={handleExecuteTrade}
+                portfolio={portfolio}
+                cashBalance={cashBalance}
+              />
+            )}
+
+            {activeTab === 'Portfolio' && (
+              <Portfolio
+                stocks={INITIAL_STOCKS}
+                holdings={portfolio}
+                cashBalance={cashBalance}
+                onExecuteTrade={handleExecuteTrade}
+              />
+            )}
+
+            {activeTab === 'Watchlist' && (
+              <Watchlist
+                stocks={INITIAL_STOCKS}
+                watchlist={watchlist}
+                onToggleWatchlist={handleToggleWatchlist}
+                onExecuteTrade={handleExecuteTrade}
+                cashBalance={cashBalance}
+                portfolio={portfolio}
+              />
+            )}
+
+            {activeTab === 'History' && (
+              <History transactions={transactions} />
+            )}
+
+            {activeTab === 'Settings' && <Settings />}
+          </main>
+        </div>
       </div>
-    </div>
+    </CurrencyProvider>
   );
 }
