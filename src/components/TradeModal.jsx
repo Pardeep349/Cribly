@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { useCurrency } from './CurrencyContext';
+import { useState } from 'react';
 import { X } from 'lucide-react';
 
 export default function TradeModal({
@@ -11,6 +12,7 @@ export default function TradeModal({
   onConfirmTrade
 }) {
   const [shares, setShares] = useState(initialShares);
+  const { formatPrice, formatMoney } = useCurrency();
 
   if (!stock) return null;
 
@@ -40,7 +42,7 @@ export default function TradeModal({
               {tradeType} {stock.symbol}
             </h3>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-              Market Price: <strong>${stock.price.toFixed(2)}</strong>
+              Market Price: <strong>{formatPrice(stock.price)}</strong>
             </p>
           </div>
           <button onClick={onClose} style={{ color: 'var(--text-muted)' }}>
@@ -75,11 +77,11 @@ export default function TradeModal({
           <div style={{ backgroundColor: 'var(--bg-dark)', padding: '0.85rem', borderRadius: '8px', fontSize: '0.85rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
               <span style={{ color: 'var(--text-muted)' }}>Total Value:</span>
-              <strong>${totalCost.toFixed(2)}</strong>
+              <strong>{formatMoney(totalCost)}</strong>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
               <span style={{ color: 'var(--text-muted)' }}>Available Cash:</span>
-              <span>${cashBalance.toFixed(2)}</span>
+              <span>{formatMoney(cashBalance)}</span>
             </div>
             {tradeType === 'SELL' && (
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
