@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { useCurrency } from '../components/CurrencyContext';
+import { useState } from 'react';
 import { Search, Star, Filter } from 'lucide-react';
 import StockModal from '../components/StockModal';
 import TradeModal from '../components/TradeModal';
@@ -15,6 +16,7 @@ export default function Market({
   const [selectedSector, setSelectedSector] = useState('ALL');
   const [selectedStock, setSelectedStock] = useState(null);
   const [tradeModalData, setTradeModalData] = useState(null);
+  const { formatPrice, formatMarketCap } = useCurrency();
 
   const filteredStocks = stocks.filter((stock) => {
     const matchesSearch =
@@ -140,14 +142,14 @@ export default function Market({
                     <span className="sector-badge">{stock.sector}</span>
                   </td>
                   <td>
-                    <strong>${stock.price.toFixed(2)}</strong>
+                    <strong>{formatPrice(stock.price)}</strong>
                   </td>
                   <td>
                     <span className={stock.change >= 0 ? 'text-green' : 'text-red'}>
                       {stock.change >= 0 ? '+' : ''}{stock.change}%
                     </span>
                   </td>
-                  <td style={{ color: 'var(--text-muted)' }}>{stock.marketCap}</td>
+                  <td style={{ color: 'var(--text-muted)' }}>{formatMarketCap(stock.marketCap)}</td>
                   <td style={{ textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
                     <button
                       className="btn btn-green"
