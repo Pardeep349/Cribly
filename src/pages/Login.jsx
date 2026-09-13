@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useState } from 'react';
 
 export default function Login({ onLogin }) {
   const [authType, setAuthType] = useState('email');
@@ -7,11 +6,12 @@ export default function Login({ onLogin }) {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [otpSent, setOtpSent] = useState(false);
-  const navigate = useNavigate();
 
   const getPasswordStrength = (pass) => {
     if (!pass) return '';
-    if (pass.length > 8 && /[A-Z]/.test(pass) && /[0-9]/.test(pass)) return 'strong';
+    if (pass.length > 8 && /[A-Z]/.test(pass) && /[0-9]/.test(pass)) {
+      return 'strong';
+    }
     if (pass.length >= 6) return 'fair';
     return 'weak';
   };
@@ -20,32 +20,56 @@ export default function Login({ onLogin }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (identifier) {
-      onLogin({ identifier });
-      navigate('/');
+
+    if (identifier.trim()) {
+      onLogin({ identifier: identifier.trim() });
     }
   };
 
+  const switchAuthType = (type) => {
+    setAuthType(type);
+    setOtpSent(false);
+    setIdentifier('');
+    setPassword('');
+  };
+
+  const toggleSignUp = () => {
+    setIsSignUp((current) => !current);
+    setIdentifier('');
+    setPassword('');
+    setOtpSent(false);
+  };
+
   return (
-    <div className="login-bg-container">
-      <div className="login-glass-card">
-        <h2 style={{ textAlign: 'center', marginBottom: '0.25rem' }}>
-          {isSignUp ? 'Create Account' : 'Welcome back'}
-        </h2>
-        <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-          {isSignUp ? 'Join Cribly Trading Platform' : 'Log in to continue trading'}
-        </p>
+    <main className="login-bg-container">
+      <section className="login-glass-card">
+        <div className="login-brand">
+          <div className="login-logo">C</div>
+          <span>Cribly</span>
+        </div>
+
+        <div className="login-heading">
+          <h1>{isSignUp ? 'Create account' : 'Welcome back'}</h1>
+          <p>
+            {isSignUp
+              ? 'Create your Cribly trading account'
+              : 'Log in to continue trading'}
+          </p>
+        </div>
 
         <div className="form-tab-group">
           <button
+            type="button"
             className={`tab-btn ${authType === 'email' ? 'active' : ''}`}
-            onClick={() => { setAuthType('email'); setOtpSent(false); }}
+            onClick={() => switchAuthType('email')}
           >
             Email
           </button>
+
           <button
+            type="button"
             className={`tab-btn ${authType === 'phone' ? 'active' : ''}`}
-            onClick={() => { setAuthType('phone'); setOtpSent(false); }}
+            onClick={() => switchAuthType('phone')}
           >
             Phone
           </button>
@@ -55,31 +79,56 @@ export default function Login({ onLogin }) {
           {authType === 'email' ? (
             <>
               <div className="form-group">
-                <label>Email Address</label>
+                <label htmlFor="email">Email Address</label>
+
                 <input
+                  id="email"
                   type="email"
                   placeholder="student@chitkara.edu.in"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
+                  autoComplete="email"
                   required
                 />
               </div>
+
               <div className="form-group">
-                <label>Password</label>
+                <div className="password-label-row">
+                  <label htmlFor="password">Password</label>
+
+                  {!isSignUp && (
+                    <button
+                      type="button"
+                      className="forgot-password"
+                      onClick={() => {}}
+                    >
+                      Forgot password?
+                    </button>
+                  )}
+                </div>
+
                 <input
+                  id="password"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  autoComplete={isSignUp ? 'new-password' : 'current-password'}
                   required
                 />
+
                 {password && (
-                  <div>
+                  <div className="password-strength">
                     <div className="strength-bar">
                       <div className={`strength-fill ${strength}`} />
                     </div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      Strength: {strength}
+
+                    <span className={`strength-text ${strength}`}>
+                      {strength === 'strong'
+                        ? 'Strong password'
+                        : strength === 'fair'
+                          ? 'Fair password'
+                          : 'Weak password'}
                     </span>
                   </div>
                 )}
@@ -88,52 +137,86 @@ export default function Login({ onLogin }) {
           ) : (
             <>
               <div className="form-group">
-                <label>Phone Number</label>
+                <label htmlFor="phone">Phone Number</label>
+
                 <input
+                  id="phone"
                   type="tel"
                   placeholder="+91 9876543210"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
+                  autoComplete="tel"
                   required
                 />
               </div>
-              {otpSent ? (
-                <div className="form-group">
-                  <label>Enter OTP</label>
-                  <input type="text" placeholder="6-digit code" required />
-                </div>
-              ) : (
+
+              {!otpSent ? (
                 <button
                   type="button"
+                  className="btn btn-primary login-action-btn"
                   onClick={() => setOtpSent(true)}
-                  className="btn btn-primary"
-                  style={{ width: '100%', marginBottom: '1rem' }}
                 >
                   Send OTP
                 </button>
+              ) : (
+                <div className="form-group">
+                  <label htmlFor="otp">Verification Code</label>
+
+                  <input
+                    id="otp"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength="6"
+                    placeholder="Enter 6-digit code"
+                    required
+                  />
+
+                  <span className="input-help">
+                    We've sent a verification code to your phone.
+                  </span>
+                </div>
               )}
             </>
           )}
 
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
-            {isSignUp ? 'Sign Up' : 'Continue'}
+          <button
+            type="submit"
+            className="btn btn-primary login-action-btn"
+          >
+            {isSignUp ? 'Create Account' : 'Continue'}
           </button>
         </form>
 
-        <button className="google-btn" onClick={() => onLogin({ identifier: 'google_user@gmail.com' })}>
-          🌐 Continue with Google
+        <div className="login-divider">
+          <span>or</span>
+        </div>
+
+        <button
+          type="button"
+          className="google-btn"
+          onClick={() => onLogin({ identifier: 'google_user@gmail.com' })}
+        >
+          <span className="google-icon">G</span>
+          Continue with Google
         </button>
 
-        <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-          {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
-          <span
-            onClick={() => setIsSignUp(!isSignUp)}
-            style={{ color: 'var(--accent-blue)', cursor: 'pointer', fontWeight: 'bold' }}
+        <p className="login-switch">
+          {isSignUp
+            ? 'Already have an account?'
+            : "Don't have an account?"}
+
+          <button
+            type="button"
+            onClick={toggleSignUp}
           >
             {isSignUp ? 'Log in' : 'Sign up'}
-          </span>
+          </button>
         </p>
-      </div>
-    </div>
+
+        <p className="login-disclaimer">
+          By continuing, you agree to the Cribly terms and privacy policy.
+        </p>
+      </section>
+    </main>
   );
 }
