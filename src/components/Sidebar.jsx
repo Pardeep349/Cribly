@@ -1,6 +1,8 @@
-import React from 'react';
-
-export default function Sidebar({ activeTab = 'Market', onTabChange = () => {} }) {
+export default function Sidebar({
+  activeTab = 'Market',
+  onTabChange = () => {},
+  onLogout = () => {},
+}) {
   const navItems = [
     { id: 'Dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'Market', label: 'Market', icon: '📈' },
@@ -21,7 +23,9 @@ export default function Sidebar({ activeTab = 'Market', onTabChange = () => {} }
           <button
             key={item.id}
             onClick={() => onTabChange(item.id)}
-            className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
+            className={`nav-item ${
+              activeTab === item.id ? 'active' : ''
+            }`}
           >
             <span>{item.icon}</span>
             <span>{item.label}</span>
@@ -29,7 +33,14 @@ export default function Sidebar({ activeTab = 'Market', onTabChange = () => {} }
         ))}
       </nav>
 
-      <button className="nav-item" style={{ color: 'var(--accent-red)', marginTop: 'auto' }}>
+      <button
+        className="nav-item"
+        onClick={onLogout}
+        style={{
+          color: 'var(--accent-red)',
+          marginTop: 'auto',
+        }}
+      >
         🚪 Logout
       </button>
     </aside>
