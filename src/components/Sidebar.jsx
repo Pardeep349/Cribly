@@ -1,15 +1,37 @@
-export default function Sidebar({
-  activeTab = 'Market',
-  onTabChange = () => {},
-  onLogout = () => {},
-}) {
+import { NavLink } from 'react-router-dom';
+
+export default function Sidebar({ onLogout = () => {} }) {
   const navItems = [
-    { id: 'Dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'Market', label: 'Market', icon: '📈' },
-    { id: 'Portfolio', label: 'Portfolio', icon: '💼' },
-    { id: 'Watchlist', label: 'Watchlist', icon: '⭐' },
-    { id: 'History', label: 'History', icon: '📜' },
-    { id: 'Settings', label: 'Settings', icon: '⚙️' },
+    {
+      path: '/dashboard',
+      label: 'Dashboard',
+      icon: '📊',
+    },
+    {
+      path: '/market',
+      label: 'Market',
+      icon: '📈',
+    },
+    {
+      path: '/portfolio',
+      label: 'Portfolio',
+      icon: '💼',
+    },
+    {
+      path: '/watchlist',
+      label: 'Watchlist',
+      icon: '⭐',
+    },
+    {
+      path: '/history',
+      label: 'History',
+      icon: '📜',
+    },
+    {
+      path: '/settings',
+      label: 'Settings',
+      icon: '⚙️',
+    },
   ];
 
   return (
@@ -20,16 +42,16 @@ export default function Sidebar({
 
       <nav className="sidebar-nav">
         {navItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => onTabChange(item.id)}
-            className={`nav-item ${
-              activeTab === item.id ? 'active' : ''
-            }`}
+          <NavLink
+            key={item.path}
+            to={item.path}
+            className={({ isActive }) =>
+              `nav-item ${isActive ? 'active' : ''}`
+            }
           >
             <span>{item.icon}</span>
             <span>{item.label}</span>
-          </button>
+          </NavLink>
         ))}
       </nav>
 
