@@ -1,29 +1,37 @@
 import { useState } from 'react';
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import './App.css';
+
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import TickerBar from './components/TickerBar';
-import Market from './pages/Market';
+import CurrencyProvider from './components/CurrencyContext';
+
 import Dashboard from './pages/Dashboard';
+import Market from './pages/Market';
 import Portfolio from './pages/Portfolio';
 import Watchlist from './pages/Watchlist';
 import History from './pages/History';
-import Login from './pages/Login';
-import { INITIAL_STOCKS } from './data/initialStocks';
 import Settings from './pages/Settings';
-import { CurrencyProvider } from './components/CurrencyContext';
+import Login from './pages/Login';
+
+import { INITIAL_STOCKS } from './data/initialStocks';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('Dashboard');
+  const navigate = useNavigate();
+
   const [watchlist, setWatchlist] = useState(['AAPL', 'NVDA']);
   const [theme, setTheme] = useState('dark');
   const [user, setUser] = useState(null);
+
   const [cashBalance, setCashBalance] = useState(12450.00);
+
   const [portfolio, setPortfolio] = useState([
     { symbol: 'AAPL', shares: 10, avgPrice: 175.00 },
     { symbol: 'NVDA', shares: 5, avgPrice: 820.00 },
     { symbol: 'GOOGL', shares: 12, avgPrice: 145.00 },
   ]);
+
   const [transactions, setTransactions] = useState([]);
 
   const handleToggleWatchlist = (symbol) => {
@@ -40,13 +48,12 @@ export default function App() {
 
   const handleLogin = (loggedInUser) => {
     setUser(loggedInUser);
-    setActiveTab('Dashboard');
+    navigate('/dashboard', { replace: true });
   };
 
-  // Logout and return to Login page
   const handleLogout = () => {
     setUser(null);
-    setActiveTab('Dashboard');
+    navigate('/login', { replace: true });
   };
 
   const handleExecuteTrade = ({ symbol, type, qty, price }) => {
@@ -57,44 +64,70 @@ export default function App() {
       return false;
     }
 
-    const existingHolding = portfolio.find((item) => item.symbol === symbol);
+    const existingHolding = portfolio.find(
+      (item) => item.symbol === symbol
+    );
 
-    if (type === 'SELL' && (!existingHolding || existingHolding.shares < qty)) {
+    if (
+      type === 'SELL' &&
+      (!existingHolding || existingHolding.shares < qty)
+    ) {
       alert('Insufficient shares owned to sell!');
       return false;
     }
 
     setCashBalance((prev) =>
-      type === 'BUY' ? prev - totalCost : prev + totalCost
+      type === 'BUY'
+        ? prev - totalCost
+        : prev + totalCost
     );
 
     setPortfolio((prev) => {
       if (type === 'BUY') {
         if (existingHolding) {
           const newShares = existingHolding.shares + qty;
+
           const newAvgPrice =
-            ((existingHolding.shares * existingHolding.avgPrice) + totalCost) /
+            ((existingHolding.shares * existingHolding.avgPrice) +
+              totalCost) /
             newShares;
 
           return prev.map((item) =>
             item.symbol === symbol
-              ? { ...item, shares: newShares, avgPrice: newAvgPrice }
+              ? {
+                  ...item,
+                  shares: newShares,
+                  avgPrice: newAvgPrice,
+                }
               : item
           );
         }
 
-        return [...prev, { symbol, shares: qty, avgPrice: price }];
+        return [
+          ...prev,
+          {
+            symbol,
+            shares: qty,
+            avgPrice: price,
+          },
+        ];
       }
 
-      const remainingShares = existingHolding.shares - qty;
+      const remainingShares =
+        existingHolding.shares - qty;
 
       if (remainingShares === 0) {
-        return prev.filter((item) => item.symbol !== symbol);
+        return prev.filter(
+          (item) => item.symbol !== symbol
+        );
       }
 
       return prev.map((item) =>
         item.symbol === symbol
-          ? { ...item, shares: remainingShares }
+          ? {
+              ...item,
+              shares: remainingShares,
+            }
           : item
       );
     });
@@ -102,12 +135,19 @@ export default function App() {
     const now = new Date();
 
     const formattedTimestamp =
-      `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ` +
-      `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      `${now.getFullYear()}-${String(
+        now.getMonth() + 1
+      ).padStart(2, '0')}-${String(
+        now.getDate()
+      ).padStart(2, '0')} ` +
+      `${String(now.getHours()).padStart(2, '0')}:` +
+      `${String(now.getMinutes()).padStart(2, '0')}`;
 
     setTransactions((prev) => [
       {
-        id: `TX${Math.floor(1000 + Math.random() * 9000)}`,
+        id: `TX${Math.floor(
+          1000 + Math.random() * 9000
+        )}`,
         symbol,
         type,
         qty,
@@ -121,19 +161,29 @@ export default function App() {
     return true;
   };
 
-  // If user is logged out, show Login page
+  /*
+   * Login is outside the authenticated application.
+   */
   if (!user) {
-    return <Login onLogin={handleLogin} />;
+    return (
+      <Routes>
+        <Route
+          path="/login"
+          element={<Login onLogin={handleLogin} />}
+        />
+
+        <Route
+          path="*"
+          element={<Navigate to="/login" replace />}
+        />
+      </Routes>
+    );
   }
 
   return (
     <CurrencyProvider>
       <div className={`app-container ${theme}`}>
-        <Sidebar
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          onLogout={handleLogout}
-        />
+        <Sidebar onLogout={handleLogout} />
 
         <div className="main-content">
           <Navbar
@@ -146,51 +196,93 @@ export default function App() {
           <TickerBar stocks={INITIAL_STOCKS} />
 
           <main className="page-container">
-            {activeTab === 'Dashboard' && (
-              <Dashboard
-                user={user}
-                portfolio={portfolio}
-                stocks={INITIAL_STOCKS}
-                cashBalance={cashBalance}
+            <Routes>
+              <Route
+                path="/dashboard"
+                element={
+                  <Dashboard
+                    user={user}
+                    portfolio={portfolio}
+                    stocks={INITIAL_STOCKS}
+                    cashBalance={cashBalance}
+                  />
+                }
               />
-            )}
 
-            {activeTab === 'Market' && (
-              <Market
-                stocks={INITIAL_STOCKS}
-                watchlist={watchlist}
-                onToggleWatchlist={handleToggleWatchlist}
-                onExecuteTrade={handleExecuteTrade}
-                portfolio={portfolio}
-                cashBalance={cashBalance}
+              <Route
+                path="/market"
+                element={
+                  <Market
+                    stocks={INITIAL_STOCKS}
+                    watchlist={watchlist}
+                    onToggleWatchlist={handleToggleWatchlist}
+                    onExecuteTrade={handleExecuteTrade}
+                    portfolio={portfolio}
+                    cashBalance={cashBalance}
+                  />
+                }
               />
-            )}
 
-            {activeTab === 'Portfolio' && (
-              <Portfolio
-                stocks={INITIAL_STOCKS}
-                holdings={portfolio}
-                cashBalance={cashBalance}
-                onExecuteTrade={handleExecuteTrade}
+              <Route
+                path="/portfolio"
+                element={
+                  <Portfolio
+                    stocks={INITIAL_STOCKS}
+                    holdings={portfolio}
+                    cashBalance={cashBalance}
+                    onExecuteTrade={handleExecuteTrade}
+                  />
+                }
               />
-            )}
 
-            {activeTab === 'Watchlist' && (
-              <Watchlist
-                stocks={INITIAL_STOCKS}
-                watchlist={watchlist}
-                onToggleWatchlist={handleToggleWatchlist}
-                onExecuteTrade={handleExecuteTrade}
-                cashBalance={cashBalance}
-                portfolio={portfolio}
+              <Route
+                path="/watchlist"
+                element={
+                  <Watchlist
+                    stocks={INITIAL_STOCKS}
+                    watchlist={watchlist}
+                    onToggleWatchlist={handleToggleWatchlist}
+                    onExecuteTrade={handleExecuteTrade}
+                    cashBalance={cashBalance}
+                    portfolio={portfolio}
+                  />
+                }
               />
-            )}
 
-            {activeTab === 'History' && (
-              <History transactions={transactions} />
-            )}
+              <Route
+                path="/history"
+                element={
+                  <History
+                    transactions={transactions}
+                  />
+                }
+              />
 
-            {activeTab === 'Settings' && <Settings />}
+              <Route
+                path="/settings"
+                element={<Settings />}
+              />
+
+              <Route
+                path="/login"
+                element={
+                  <Navigate
+                    to="/dashboard"
+                    replace
+                  />
+                }
+              />
+
+              <Route
+                path="*"
+                element={
+                  <Navigate
+                    to="/dashboard"
+                    replace
+                  />
+                }
+              />
+            </Routes>
           </main>
         </div>
       </div>
