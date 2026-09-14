@@ -5,7 +5,7 @@ import './App.css';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import TickerBar from './components/TickerBar';
-import CurrencyProvider from './components/CurrencyContext';
+import {CurrencyProvider} from './components/CurrencyContext';
 
 import Dashboard from './pages/Dashboard';
 import Market from './pages/Market';
