@@ -1,55 +1,63 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Maximize2, Settings2 } from 'lucide-react';
 import { useCurrency } from './CurrencyContext';
+import { fetchStockCandles } from '../services/marketApi';
 
-const TIMEFRAMES = [
-  ['1D', 24],
-  ['3D', 30],
-  ['5D', 36],
-  ['1M', 42],
-  ['1Y', 52],
-  ['ALL', 64]
-];
-
-function buildCandles(stock, count) {
-  const seed = [...stock.symbol].reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
-  let close = Number(stock.price) || 100;
-  const candles = [];
-
-  for (let i = 0; i < count; i += 1) {
-    const wave = Math.sin((i + seed) * 0.62) * 0.012;
-    const drift = ((seed % 7) - 3) * 0.0008;
-    const open = close;
-    const move = wave + drift + Math.sin((i + seed) * 1.71) * 0.008;
-    close = Math.max(0.5, open * (1 + move));
-    const high = Math.max(open, close) * (1 + 0.004 + ((i + seed) % 5) * 0.0015);
-    const low = Math.min(open, close) * (1 - 0.004 - ((i + seed) % 4) * 0.0012);
-    const volume = 500000 + ((i * 7919 + seed * 104729) % 1800000);
-    candles.push({ open, high, low, close, volume });
-  }
-
-  return candles;
-}
+const TIMEFRAMES = ['1D', '3D', '5D', '1M', '1Y', 'ALL'];
 
 export default function StockModal({ stock, onClose, onOpenTrade }) {
   const [timeframe, setTimeframe] = useState('5D');
   const [shares, setShares] = useState(1);
   const { formatPrice, currency } = useCurrency();
   const [hoveredIndex, setHoveredIndex] = useState(null);
+  const [historicalCandles, setHistoricalCandles] = useState([]);
+  const [chartLoading, setChartLoading] = useState(false);
+  const [chartError, setChartError] = useState('');
+  const [chartSource, setChartSource] = useState('loading');
+  const symbol = stock?.symbol;
 
-  const candleCount = TIMEFRAMES.find(([tf]) => tf === timeframe)?.[1] || 36;
-  const candles = useMemo(() => buildCandles(stock, candleCount), [stock, candleCount]);
+  useEffect(() => {
+    if (!symbol) return undefined;
+    let cancelled = false;
+    const loadCandles = async () => {
+      setChartLoading(true);
+      setChartSource('loading');
+      setChartError('');
+      try {
+        const data = await fetchStockCandles(symbol, timeframe);
+        if (cancelled) return;
+        setHistoricalCandles(data);
+        setChartError('');
+        setChartSource('live');
+      } catch (error) {
+        if (cancelled) return;
+        setHistoricalCandles([]);
+        setChartError(error.message || 'Could not load historical market data.');
+        setChartSource('external');
+      } finally {
+        if (!cancelled) setChartLoading(false);
+      }
+    };
+    loadCandles();
+    // Refresh the historical series periodically while the chart modal is open.
+    const refreshId = window.setInterval(loadCandles, 60_000);
+    return () => { cancelled = true; window.clearInterval(refreshId); };
+  }, [symbol, timeframe]);
+
+  const candles = historicalCandles;
+  const lastCandle = candles.at(-1) ?? { open: stock?.price ?? 0, high: stock?.price ?? 0, low: stock?.price ?? 0, close: stock?.price ?? 0, volume: 0 };
 
   if (!stock) return null;
 
   const prices = candles.flatMap((c) => [c.high, c.low]);
-  const minPrice = Math.min(...prices);
-  const maxPrice = Math.max(...prices);
+  const minPrice = prices.length ? Math.min(...prices) : (stock?.price ?? 1) * 0.98;
+  const maxPrice = prices.length ? Math.max(...prices) : (stock?.price ?? 1) * 1.02;
   const padding = (maxPrice - minPrice) * 0.08 || 1;
   const chartMin = minPrice - padding;
   const chartMax = maxPrice + padding;
   const priceRange = chartMax - chartMin || 1;
-  const maxVolume = Math.max(...candles.map((c) => c.volume));
+  const maxVolume = Math.max(1, ...candles.map((c) => c.volume));
 
   const width = 760;
   const height = 350;
@@ -67,7 +75,7 @@ export default function StockModal({ stock, onClose, onOpenTrade }) {
   const hovered = hoveredIndex === null ? null : candles[hoveredIndex];
   const hoveredX = hoveredIndex === null ? null : left + step * hoveredIndex + step / 2;
 
-  return (
+  return createPortal((
     <div className="modal-overlay" onClick={onClose}>
       <div className="stock-modal stock-modal-pro" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
@@ -75,7 +83,7 @@ export default function StockModal({ stock, onClose, onOpenTrade }) {
             <div className="stock-title-row">
               <h2>{stock.symbol}</h2>
               <span className="sector-badge">{stock.sector}</span>
-              <span className="chart-status">MARKET</span>
+              <span className="chart-status">{chartSource === 'live' ? 'MARKET HISTORY' : chartSource === 'loading' ? 'LOADING' : 'LIVE CHART'}</span>
             </div>
             <p className="stock-name">{stock.name}</p>
           </div>
@@ -94,17 +102,17 @@ export default function StockModal({ stock, onClose, onOpenTrade }) {
             </span>
           </div>
           <div className="quote-meta">
-            <span>O {formatPrice(candles.at(-1).open)}</span>
-            <span>H {formatPrice(candles.at(-1).high)}</span>
-            <span>L {formatPrice(candles.at(-1).low)}</span>
-            <span>C {formatPrice(candles.at(-1).close)}</span>
+            <span>O {formatPrice(lastCandle.open)}</span>
+            <span>H {formatPrice(lastCandle.high)}</span>
+            <span>L {formatPrice(lastCandle.low)}</span>
+            <span>C {formatPrice(lastCandle.close)}</span>
           </div>
         </div>
 
         <div className="trading-toolbar">
           <div className="chart-type-label"><span className="candle-icon" /> Candles</div>
           <div className="timeframe-selector">
-            {TIMEFRAMES.map(([tf]) => (
+            {TIMEFRAMES.map((tf) => (
               <button
                 key={tf}
                 className={`timeframe-btn ${timeframe === tf ? 'active' : ''}`}
@@ -118,7 +126,12 @@ export default function StockModal({ stock, onClose, onOpenTrade }) {
         </div>
 
         <div className="real-chart">
-          <svg
+          {(chartLoading || chartError) && (
+            <div className="chart-data-notice" role="status">
+              {chartLoading ? 'Refreshing market candles…' : chartSource === 'external' ? `Using the embedded live chart because direct candle access was unavailable. ${chartError}` : chartError}
+            </div>
+          )}
+          {chartSource === 'external' ? <iframe className="external-trading-chart" title={`${stock.symbol} live TradingView chart`} src={`https://s.tradingview.com/widgetembed/?frameElementId=cribly-tv-${stock.symbol}&symbol=${encodeURIComponent(['AAPL','MSFT','GOOGL','AMZN','NVDA','TSLA','META','NFLX','AMD','INTC','ORCL','COST'].includes(stock.symbol) ? `NASDAQ:${stock.symbol}` : `NYSE:${stock.symbol}`)}&interval=${timeframe === '1D' ? '5' : timeframe === '3D' || timeframe === '5D' ? '15' : timeframe === '1M' ? '60' : 'D'}&hidesidetoolbar=1&symboledit=1&saveimage=0&toolbarbg=0f172a&theme=dark&style=1&timezone=Etc%2FUTC&withdateranges=1&hideideas=1&locale=en`} loading="lazy" allowFullScreen /> : <svg
             className="trading-svg"
             viewBox={`0 0 ${width} ${height}`}
             preserveAspectRatio="none"
@@ -185,8 +198,8 @@ export default function StockModal({ stock, onClose, onOpenTrade }) {
                 <text x={Math.min(hoveredX + 18, width - 170)} y="47" className="ohlc-text">L {formatPrice(hovered.low)}  C {formatPrice(hovered.close)}</text>
               </>
             )}
-          </svg>
-          <div className="chart-watermark">LOCAL MARKET DATA</div>
+          </svg>}
+          {chartSource === 'live' && <div className="chart-watermark">MARKET PROVIDER HISTORICAL DATA · AUTO-REFRESH 60s</div>}
         </div>
 
         <div className="chart-footer-row">
@@ -216,5 +229,5 @@ export default function StockModal({ stock, onClose, onOpenTrade }) {
         </div>
       </div>
     </div>
-  );
+  ), document.body);
 }

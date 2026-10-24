@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import './App.css';
 
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import TickerBar from './components/TickerBar';
-import {CurrencyProvider} from './components/CurrencyContext';
+import { CurrencyProvider } from './components/CurrencyContext';
 
 import Dashboard from './pages/Dashboard';
 import Market from './pages/Market';
@@ -16,6 +16,9 @@ import Settings from './pages/Settings';
 import Login from './pages/Login';
 
 import { INITIAL_STOCKS } from './data/initialStocks';
+import { fetchMarketStocks } from './services/marketApi';
+import { financialReducer, INITIAL_FINANCIAL_STATE } from './reducers/financialReducer';
+import { createTransactionId, formatTransactionTimestamp } from './utils/transactions';
 
 export default function App() {
   const navigate = useNavigate();
@@ -24,15 +27,45 @@ export default function App() {
   const [theme, setTheme] = useState('dark');
   const [user, setUser] = useState(null);
 
-  const [cashBalance, setCashBalance] = useState(12450.00);
+  const [financialState, dispatchFinancialAction] = useReducer(
+    financialReducer,
+    INITIAL_FINANCIAL_STATE,
+  );
+  const { cashBalance, portfolio, transactions } = financialState;
+  const [stocks, setStocks] = useState(INITIAL_STOCKS);
+  const [marketDataStatus, setMarketDataStatus] = useState({
+    source: 'demo', loading: true, error: '', message: 'Loading market quotes…', lastUpdated: null,
+  });
 
-  const [portfolio, setPortfolio] = useState([
-    { symbol: 'AAPL', shares: 10, avgPrice: 175.00 },
-    { symbol: 'NVDA', shares: 5, avgPrice: 820.00 },
-    { symbol: 'GOOGL', shares: 12, avgPrice: 145.00 },
-  ]);
+  // Load quotes on entry and refresh them periodically. Finnhub REST calls are
+  // deliberately throttled to once per minute to avoid exhausting free-tier limits.
+  useEffect(() => {
+    let cancelled = false;
+    const loadQuotes = async () => {
+      if (cancelled) return;
+      setMarketDataStatus((prev) => ({ ...prev, loading: true, error: '' }));
+      try {
+        const result = await fetchMarketStocks();
+        if (cancelled) return;
+        setStocks(result.stocks);
+        setMarketDataStatus({
+          source: result.source, loading: false, error: '', message: result.message, lastUpdated: new Date(),
+        });
+      } catch (error) {
+        if (cancelled) return;
+        setMarketDataStatus((prev) => ({
+          ...prev, loading: false, error: error instanceof Error ? error.message : 'Unable to load market data.',
+          message: 'Showing the last available prices.',
+        }));
+      }
+    };
 
-  const [transactions, setTransactions] = useState([]);
+    const handleManualRefresh = () => loadQuotes();
+    window.addEventListener('cribly-refresh-market-data', handleManualRefresh);
+    loadQuotes();
+    const intervalId = window.setInterval(loadQuotes, 60_000);
+    return () => { cancelled = true; window.clearInterval(intervalId); window.removeEventListener('cribly-refresh-market-data', handleManualRefresh); };
+  }, []);
 
   const handleToggleWatchlist = (symbol) => {
     setWatchlist((prev) =>
@@ -56,6 +89,28 @@ export default function App() {
     navigate('/login', { replace: true });
   };
 
+  const handleFundsTransaction = ({ mode, amount, bank, accountName }) => {
+    if (!Number.isFinite(amount) || amount <= 0) return false;
+    if (mode === 'withdraw' && amount > cashBalance) return false;
+
+    const transaction = {
+      id: createTransactionId('WAL'),
+      symbol: 'WALLET',
+      type: mode === 'deposit' ? 'DEPOSIT' : 'WITHDRAWAL',
+      qty: 1,
+      price: amount,
+      time: formatTransactionTimestamp(),
+      status: 'Demo',
+      note: `${bank} · ${accountName}`,
+    };
+
+    dispatchFinancialAction({
+      type: 'RECORD_FUNDS_TRANSACTION',
+      payload: { mode, amount, transaction },
+    });
+    return true;
+  };
+
   const handleExecuteTrade = ({ symbol, type, qty, price }) => {
     const totalCost = qty * price;
 
@@ -64,100 +119,26 @@ export default function App() {
       return false;
     }
 
-    const existingHolding = portfolio.find(
-      (item) => item.symbol === symbol
-    );
-
-    if (
-      type === 'SELL' &&
-      (!existingHolding || existingHolding.shares < qty)
-    ) {
+    const existingHolding = portfolio.find((item) => item.symbol === symbol);
+    if (type === 'SELL' && (!existingHolding || existingHolding.shares < qty)) {
       alert('Insufficient shares owned to sell!');
       return false;
     }
 
-    setCashBalance((prev) =>
-      type === 'BUY'
-        ? prev - totalCost
-        : prev + totalCost
-    );
+    const transaction = {
+      id: createTransactionId('TX'),
+      symbol,
+      type,
+      qty,
+      price,
+      time: formatTransactionTimestamp(),
+      status: 'Completed',
+    };
 
-    setPortfolio((prev) => {
-      if (type === 'BUY') {
-        if (existingHolding) {
-          const newShares = existingHolding.shares + qty;
-
-          const newAvgPrice =
-            ((existingHolding.shares * existingHolding.avgPrice) +
-              totalCost) /
-            newShares;
-
-          return prev.map((item) =>
-            item.symbol === symbol
-              ? {
-                  ...item,
-                  shares: newShares,
-                  avgPrice: newAvgPrice,
-                }
-              : item
-          );
-        }
-
-        return [
-          ...prev,
-          {
-            symbol,
-            shares: qty,
-            avgPrice: price,
-          },
-        ];
-      }
-
-      const remainingShares =
-        existingHolding.shares - qty;
-
-      if (remainingShares === 0) {
-        return prev.filter(
-          (item) => item.symbol !== symbol
-        );
-      }
-
-      return prev.map((item) =>
-        item.symbol === symbol
-          ? {
-              ...item,
-              shares: remainingShares,
-            }
-          : item
-      );
+    dispatchFinancialAction({
+      type: 'EXECUTE_TRADE',
+      payload: { symbol, type, qty, price, transaction },
     });
-
-    const now = new Date();
-
-    const formattedTimestamp =
-      `${now.getFullYear()}-${String(
-        now.getMonth() + 1
-      ).padStart(2, '0')}-${String(
-        now.getDate()
-      ).padStart(2, '0')} ` +
-      `${String(now.getHours()).padStart(2, '0')}:` +
-      `${String(now.getMinutes()).padStart(2, '0')}`;
-
-    setTransactions((prev) => [
-      {
-        id: `TX${Math.floor(
-          1000 + Math.random() * 9000
-        )}`,
-        symbol,
-        type,
-        qty,
-        price,
-        time: formattedTimestamp,
-        status: 'Completed',
-      },
-      ...prev,
-    ]);
-
     return true;
   };
 
@@ -193,7 +174,7 @@ export default function App() {
             cashBalance={cashBalance}
           />
 
-          <TickerBar stocks={INITIAL_STOCKS} />
+          <TickerBar stocks={stocks} marketDataStatus={marketDataStatus} />
 
           <main className="page-container">
             <Routes>
@@ -203,8 +184,10 @@ export default function App() {
                   <Dashboard
                     user={user}
                     portfolio={portfolio}
-                    stocks={INITIAL_STOCKS}
+                    stocks={stocks}
                     cashBalance={cashBalance}
+                    onFundsTransaction={handleFundsTransaction}
+                    marketDataStatus={marketDataStatus}
                   />
                 }
               />
@@ -213,7 +196,9 @@ export default function App() {
                 path="/market"
                 element={
                   <Market
-                    stocks={INITIAL_STOCKS}
+                    stocks={stocks}
+                    marketDataStatus={marketDataStatus}
+                    onRefreshMarketData={() => window.dispatchEvent(new CustomEvent('cribly-refresh-market-data'))}
                     watchlist={watchlist}
                     onToggleWatchlist={handleToggleWatchlist}
                     onExecuteTrade={handleExecuteTrade}
@@ -227,7 +212,7 @@ export default function App() {
                 path="/portfolio"
                 element={
                   <Portfolio
-                    stocks={INITIAL_STOCKS}
+                    stocks={stocks}
                     holdings={portfolio}
                     cashBalance={cashBalance}
                     onExecuteTrade={handleExecuteTrade}
@@ -239,7 +224,7 @@ export default function App() {
                 path="/watchlist"
                 element={
                   <Watchlist
-                    stocks={INITIAL_STOCKS}
+                    stocks={stocks}
                     watchlist={watchlist}
                     onToggleWatchlist={handleToggleWatchlist}
                     onExecuteTrade={handleExecuteTrade}

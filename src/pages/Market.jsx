@@ -1,6 +1,6 @@
 import { useCurrency } from '../components/CurrencyContext';
 import { useState } from 'react';
-import { Search, Star, Filter } from 'lucide-react';
+import { Search, Star, Filter, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import StockModal from '../components/StockModal';
 import TradeModal from '../components/TradeModal';
 
@@ -10,7 +10,9 @@ export default function Market({
   onToggleWatchlist,
   onExecuteTrade,
   portfolio = [],
-  cashBalance = 25000
+  cashBalance = 25000,
+  marketDataStatus = { source: 'demo', loading: false, message: 'Demo prices are shown.' },
+  onRefreshMarketData,
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSector, setSelectedSector] = useState('ALL');
@@ -42,6 +44,21 @@ export default function Market({
 
   return (
     <div>
+      <div className="market-data-banner" role="status" aria-live="polite">
+        <div className="market-data-copy">
+          {marketDataStatus.source === 'live' ? <Wifi size={16} /> : <WifiOff size={16} />}
+          <div>
+            <strong>{marketDataStatus.source === 'live' ? 'Live market quotes' : marketDataStatus.source === 'partial' ? 'Partial market data' : 'Demo market data'}</strong>
+            <span>{marketDataStatus.error || marketDataStatus.message}</span>
+            {marketDataStatus.lastUpdated && <small>Last updated: {marketDataStatus.lastUpdated.toLocaleTimeString()}</small>}
+          </div>
+        </div>
+        <button className="btn btn-secondary market-refresh-button" onClick={onRefreshMarketData} disabled={marketDataStatus.loading}>
+          <RefreshCw size={14} className={marketDataStatus.loading ? 'spin' : ''} />
+          {marketDataStatus.loading ? 'Refreshing…' : 'Refresh prices'}
+        </button>
+      </div>
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div>
           <h2>Market Overview</h2>

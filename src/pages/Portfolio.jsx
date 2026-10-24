@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import TradeModal from '../components/TradeModal';
 
 export default function Portfolio({

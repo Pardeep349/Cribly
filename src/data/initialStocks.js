@@ -1,8 +1,23 @@
+// Reference metadata and fallback quotes for demo/offline mode. Live prices are fetched from Finnhub.
 export const INITIAL_STOCKS = [
   { symbol: 'AAPL', name: 'Apple Inc.', sector: 'TECHNOLOGY', price: 189.80, change: 1.39, marketCap: '$2.94T', volume: '52M' },
   { symbol: 'MSFT', name: 'Microsoft Corp.', sector: 'TECHNOLOGY', price: 395.61, change: -3.56, marketCap: '$3.08T', volume: '38M' },
   { symbol: 'GOOGL', name: 'Alphabet Inc.', sector: 'TECHNOLOGY', price: 157.18, change: 2.87, marketCap: '$1.92T', volume: '24M' },
   { symbol: 'AMZN', name: 'Amazon.com Inc.', sector: 'CONSUMER', price: 183.52, change: 0.56, marketCap: '$1.91T', volume: '31M' },
   { symbol: 'NVDA', name: 'NVIDIA Corp.', sector: 'TECHNOLOGY', price: 895.67, change: 4.09, marketCap: '$2.18T', volume: '42M' },
-  { symbol: 'TSLA', name: 'Tesla Inc.', sector: 'CONSUMER', price: 175.20, change: -2.40, marketCap: '$550B', volume: '88M' }
+  { symbol: 'TSLA', name: 'Tesla Inc.', sector: 'CONSUMER', price: 175.20, change: -2.40, marketCap: '$550B', volume: '88M' },
+  { symbol: 'META', name: 'Meta Platforms Inc.', sector: 'TECHNOLOGY', price: 500.00, change: 0.35, marketCap: '$1.2T', volume: '16M' },
+  { symbol: 'NFLX', name: 'Netflix Inc.', sector: 'COMMUNICATION', price: 620.00, change: 0.72, marketCap: '$270B', volume: '4M' },
+  { symbol: 'AMD', name: 'Advanced Micro Devices', sector: 'TECHNOLOGY', price: 165.00, change: -0.41, marketCap: '$265B', volume: '28M' },
+  { symbol: 'INTC', name: 'Intel Corp.', sector: 'TECHNOLOGY', price: 31.00, change: -0.80, marketCap: '$130B', volume: '42M' },
+  { symbol: 'ORCL', name: 'Oracle Corp.', sector: 'TECHNOLOGY', price: 125.00, change: 0.21, marketCap: '$345B', volume: '8M' },
+  { symbol: 'IBM', name: 'International Business Machines', sector: 'TECHNOLOGY', price: 185.00, change: 0.18, marketCap: '$170B', volume: '4M' },
+  { symbol: 'JPM', name: 'JPMorgan Chase & Co.', sector: 'FINANCIAL', price: 198.00, change: 0.32, marketCap: '$570B', volume: '9M' },
+  { symbol: 'BAC', name: 'Bank of America Corp.', sector: 'FINANCIAL', price: 38.00, change: -0.14, marketCap: '$300B', volume: '32M' },
+  { symbol: 'V', name: 'Visa Inc.', sector: 'FINANCIAL', price: 275.00, change: 0.27, marketCap: '$560B', volume: '6M' },
+  { symbol: 'WMT', name: 'Walmart Inc.', sector: 'CONSUMER', price: 67.00, change: 0.44, marketCap: '$540B', volume: '17M' },
+  { symbol: 'KO', name: 'Coca-Cola Co.', sector: 'CONSUMER', price: 62.00, change: -0.08, marketCap: '$265B', volume: '12M' },
+  { symbol: 'DIS', name: 'Walt Disney Co.', sector: 'COMMUNICATION', price: 112.00, change: 0.16, marketCap: '$205B', volume: '10M' },
+  { symbol: 'UBER', name: 'Uber Technologies Inc.', sector: 'TECHNOLOGY', price: 78.00, change: 0.63, marketCap: '$160B', volume: '14M' },
+  { symbol: 'COST', name: 'Costco Wholesale Corp.', sector: 'CONSUMER', price: 850.00, change: 0.22, marketCap: '$375B', volume: '2M' },
 ];

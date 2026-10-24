@@ -52,7 +52,7 @@ export default function History({ transactions = [] }) {
                     color: 'var(--text-muted)',
                   }}
                 >
-                  No trade transactions recorded yet.
+                  No transactions recorded yet.
                 </td>
               </tr>
             ) : (
@@ -71,14 +71,14 @@ export default function History({ transactions = [] }) {
                   <td>
                     <span
                       className={
-                        tx.type === 'BUY'
+                        ['BUY', 'DEPOSIT'].includes(tx.type)
                           ? 'text-green'
                           : 'text-red'
                       }
                       style={{ fontWeight: 700 }}
                     >
                       {tx.type}
-                    </span>
+                    </span>{tx.note && <small style={{ display: 'block', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{tx.note}</small>}
                   </td>
 
                   <td>{tx.qty}</td>
